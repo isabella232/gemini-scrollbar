@@ -86,6 +86,7 @@
     this._thumbVerticalElement = null;
     this._scrollbarHorizontalElement = null;
     this._scrollbarHorizontalElement = null;
+    this._isHidden = true;
   }
 
   GeminiScrollbar.prototype.create = function create() {
@@ -203,7 +204,7 @@
     this._resizeTriggerElement = obj;
   };
 
-  GeminiScrollbar.prototype.update = function update() {
+  GeminiScrollbar.prototype.update = function update(options) {
     if (DONT_CREATE_GEMINI) {
       return this;
     }
@@ -219,8 +220,12 @@
     this._naturalThumbSizeX = this._scrollbarHorizontalElement.clientWidth / this._viewElement.scrollWidth * this._scrollbarHorizontalElement.clientWidth;
     this._naturalThumbSizeY = this._scrollbarVerticalElement.clientHeight / this._viewElement.scrollHeight * this._scrollbarVerticalElement.clientHeight;
 
-    this._scrollTopMax = this._viewElement.scrollHeight - this._viewElement.clientHeight;
-    this._scrollLeftMax = this._viewElement.scrollWidth - this._viewElement.clientWidth;
+    // cache the scroll dimensions
+    this._scrollHeight = this._viewElement.scrollHeight;
+    this._scrollWidth = this._viewElement.scrollWidth;
+
+    this._scrollTopMax = this._scrollHeight - this._viewElement.clientHeight;
+    this._scrollLeftMax = this._scrollWidth - this._viewElement.clientWidth;
 
     if (this._naturalThumbSizeY < this.minThumbSize) {
       this._thumbVerticalElement.style.height = this.minThumbSize + 'px';
@@ -244,7 +249,9 @@
     this._trackTopMax = this._scrollbarVerticalElement.clientHeight - this._thumbSizeY;
     this._trackLeftMax = this._scrollbarHorizontalElement.clientWidth - this._thumbSizeX;
 
-    this._scrollHandler();
+    if (!options || !options.fromScrollHandler) {
+      this._scrollHandler({fromUpdate: true});
+    }
 
     return this;
   };
@@ -323,7 +330,18 @@
     return this;
   };
 
-  GeminiScrollbar.prototype._scrollHandler = function _scrollHandler() {
+  GeminiScrollbar.prototype._scrollHandler = function _scrollHandler(options) {
+    if (!options || !options.fromUpdate)  {
+      if (this._viewElement.scrollHeight !== this._scrollHeight) {
+        this.update({fromScrollHandler: true});
+      }
+    }
+
+    if (this._isHidden) {
+      addClass(this.element, ['gemini-scrolling']);
+      this._isHidden = false;
+    }
+
     var x = (this._viewElement.scrollLeft * this._trackLeftMax / this._scrollLeftMax) || 0;
     var y = (this._viewElement.scrollTop * this._trackTopMax / this._scrollTopMax) || 0;
 
@@ -334,6 +352,15 @@
     this._thumbVerticalElement.style.msTransform = 'translateY(' + y + 'px)';
     this._thumbVerticalElement.style.webkitTransform = 'translate3d(0, ' + y + 'px, 0)';
     this._thumbVerticalElement.style.transform = 'translate3d(0, ' + y + 'px, 0)';
+
+    if (this._cancelStopScrolling) {
+      clearTimeout(this._cancelStopScrolling);
+    }
+
+    this._cancelStopScrolling = setTimeout(function() {
+      this._isHidden = true;
+      removeClass(this.element, ['gemini-scrolling']);
+    }.bind(this), 2000);
   };
 
   GeminiScrollbar.prototype._resizeHandler = function _resizeHandler() {
