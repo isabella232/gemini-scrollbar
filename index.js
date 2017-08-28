@@ -332,7 +332,7 @@
 
   GeminiScrollbar.prototype._scrollHandler = function _scrollHandler(options) {
     if (!options || !options.fromUpdate)  {
-      if (this._viewElement.scrollHeight !== this._scrollHeight) {
+      if (this._viewElement.scrollHeight !== this._scrollHeight || this._viewElement.scrollWidth !== this._scrollWidth) {
         this.update({fromScrollHandler: true});
       }
     }
